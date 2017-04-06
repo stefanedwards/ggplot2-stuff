@@ -57,3 +57,23 @@ ggplot(dat1, aes(gp, y)) + geom_point() + coord_closed_flipped(horizontal = 'lef
   facet_wrap(~cl, ncol=2)
 
 ```
+
+## Facet grid?
+
+```{r}
+ggplot(dat1, aes(gp, y)) + geom_point() + coord_closed_flipped(horizontal = 'left', vertical='none') + 
+  theme(axis.title=element_blank(), plot.title=element_text(size=rel(1))) +
+  facet_grid(.~cl)
+```
+
+```{r}
+ggplot(dat1, aes(gp, y)) + geom_point() + coord_closed_flipped(horizontal = 'left', vertical='none') + 
+  theme(axis.title=element_blank(), plot.title=element_text(size=rel(1))) +
+  facet_grid(cl2~cl)
+```
+
+```{r}
+ggplot(dat1, aes(gp, y)) + geom_point() + coord_closed_flipped(horizontal = 'left', vertical='none') + 
+  theme(axis.title=element_blank(), plot.title=element_text(size=rel(1))) +
+  facet_grid(cl2 ~ .)
+```
