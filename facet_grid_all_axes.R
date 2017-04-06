@@ -1,14 +1,30 @@
 
-facet_grid2 <- function(facets, shrink=TRUE, ...) {
+facet_grid2 <- function(facets, shrink=TRUE, repeat.tick.labels=FALSE, ...) {
   f <- facet_grid(facets, shrink=shrink, ...)
+  params <- append(f$params, list(repeat.tick.labels=repeat.tick.labels))
   ggproto(NULL, FacetGrid2, 
           shrink=shrink,
-          params=f$params)
+          params=params)
 }
+
+remove_labels_from_axis <- function(axisgrob) {
+  if (inherits(axisgrob, 'zeroGrob')) return(axisgrob)
+  a <- which(sapply(axisgrob$children, `[[`, i='name') == 'axis')
+  d <- grepl('titleGrob', sapply(axisgrob$children[[a]]$grobs, `[[`, i='name'))
+  if (sum(d) > 0) {
+    axisgrob$children[[a]] <- do.call(gList, axisgrob$children[[a]]$grobs[!d])
+    if (length(axisgrob$width$arg1) == 2) axisgrob$width$arg1 <- axisgrob$width$arg1[attr(axisgrob$width$arg1, 'unit') != 'grobwidth']
+    if (length(axisgrob$height$arg1) == 2) axisgrob$height$arg1 <- axisgrob$height$arg1[attr(axisgrob$height$arg1, 'unit') != 'grobheight']
+    #if (length(axisgrob$children[[a]]$heights) == 2) axisgrob$children[[a]]$heights <- axisgrob$children[[a]]$heights[!d]
+  }
+  axisgrob
+}
+grid.draw(remove_labels_from_axis(axisgrob))
 
 FacetGrid2 <- ggproto('FacetGrid2', `_inherit`=FacetGrid,
   draw_panels  = function(panels, layout, x_scales, y_scales, ranges, coord, data, theme, params) {
     table <- FacetGrid$draw_panels(panels, layout, x_scales, y_scales, ranges, coord, data, theme, params)
+    saveRDS(params, 'draw_panels_params.rds')
     saveRDS(table, 'draw_panels.rds')
     # Add axes across all panels
     
@@ -18,9 +34,16 @@ FacetGrid2 <- ggproto('FacetGrid2', `_inherit`=FacetGrid,
     panels$row <- as.integer(cord[,2])
     
     axis_b <- table$grobs[grepl('axis-b-[[:digit:]]+', table$layout$name)]
-    axis_t <- table$grobs[grepl('axis-t-[[:digit:]]+', table$layout$name)]
     axis_l <- table$grobs[grepl('axis-l-[[:digit:]]+', table$layout$name)]
+    axis_t <- table$grobs[grepl('axis-t-[[:digit:]]+', table$layout$name)]
     axis_r <- table$grobs[grepl('axis-r-[[:digit:]]+', table$layout$name)]
+    
+    if (params$repeat.tick.labels == FALSE) {
+      axis_b <- lapply(axis_b, remove_labels_from_axis)
+      axis_l <- lapply(axis_l, remove_labels_from_axis)
+      axis_t <- lapply(axis_t, remove_labels_from_axis)
+      axis_r <- lapply(axis_r, remove_labels_from_axis)
+    }
     
     panel_range <- ggplot2:::find_panel(table)
     panel_range[,c('col','row')] <- c(max(panels$col), max(panels$row))
@@ -82,7 +105,7 @@ FacetGrid2 <- ggproto('FacetGrid2', `_inherit`=FacetGrid,
     table
   }
 )
-(p <- ggplot(dat1, aes(gp, y)) + geom_point() + facet_grid2(cl2 ~ cl) + coord_closed_cart(horizontal='left', vertical='none') + scale_y_continuous(sec.axis=sec_axis(~.*pi)))
+(p <- ggplot(dat1, aes(gp, y)) + geom_point() + facet_grid2(cl2 ~ cl, repeat.tick.labels = FALSE) + coord_closed_cart(horizontal='left', vertical='none') + scale_y_continuous(sec.axis=sec_axis(~.*pi)))
 (p <- ggplot(dat1, aes(gp, y)) + geom_point() + facet_grid2(cl2 ~ cl) + coord_closed_cart(horizontal='left', vertical='none') + scale_y_continuous(sec.axis=sec_axis(~.*pi)) + scale_x_discrete(position='top') + theme(strip.placement = 'outside'))
 g <- ggplot_gtable(ggplot_build(p))
 grid.newpage(); grid.draw(g)
